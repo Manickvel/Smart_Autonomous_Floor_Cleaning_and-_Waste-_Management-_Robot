@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Car Game Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+
+<body>
+
+  <!-- BACKGROUND -->
+  <div class="background"></div>
+
+  <!-- CONTROL PANEL -->
+  <div class="control-panel">
+
+    <!-- MODE BAR -->
+    <div class="mode-bar">
+      <button id="autoBtn" class="mode-btn active" onclick="setMode('auto')">AUTO</button>
+      <button id="manualBtn" class="mode-btn" onclick="setMode('manual')">MANUAL</button>
+    </div>
+
+    <!-- MAIN CONTROLS -->
+    <div class="controls">
+
+      <!-- LEFT -->
+      <button class="emergency-btn"
+        onpointerdown="startEmergencyBrake()"
+        onpointerup="stopAll()">STOP</button>
+
+      <div class="side-panel">
+
+        <div class="pair-horizontal-lft">
+          <button class="control-btn"
+            onpointerdown="startBrakeSoft()"
+            onpointerup="stopAll()">
+            <img src="brake.png">
+          </button>
+
+          <button class="control-btn"
+            onpointerdown="startMove('forward')"
+            onpointerup="stopAll()">
+            <img src="accelerator.png">
+          </button>
+        </div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="center-panel">
+        <a class="arm-btn" onclick="goArm()">ARM<br>CONTROL</a>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="side-panel">
+        <div class="pair-horizontal-rgt">
+          <button class="control-btn"
+            onpointerdown="startMove('left')"
+            onpointerup="stopAll()">
+            <img src="left.png">
+          </button>
+
+          <button class="control-btn"
+            onpointerdown="startMove('right')"
+            onpointerup="stopAll()">
+            <img src="right.png">
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      <span id="statusText">ROBOT MOVEMENT CONTROLLER</span>
+    </div>
+
+  </div>
+
+  <script>
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+    let isPressed = false;
+    let currentMode = "auto";
+
+    client.on("connect", () => {
+      console.log("✅ MQTT Connected");
+    });
+
+    function move(cmd) {
+      console.log("SEND:", cmd);
+      client.publish("smartbin/move", cmd);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+
+      document.getElementById("manualBtn").classList.remove("active");
+      document.getElementById("autoBtn").classList.remove("active");
+
+      if (mode === "manual") {
+        document.getElementById("manualBtn").classList.add("active");
+        enableControls(true);
+      } else {
+        document.getElementById("autoBtn").classList.add("active");
+        enableControls(false);
+      }
+
+      client.publish("smartbin/mode", mode);
+    }
+
+    function enableControls(enable) {
+      document.querySelectorAll(".control-btn, .emergency-btn")
+        .forEach(btn => btn.disabled = !enable);
+
+      if (!enable) stopAll();
+    }
+
+    function startMove(cmd) {
+      if (currentMode !== "manual" || isPressed) return;
+      isPressed = true;
+      move(cmd);
+    }
+
+    function startBrakeSoft() {
+      if (currentMode !== "manual" || isPressed) return;
+      isPressed = true;
+      move("brake_soft");
+    }
+
+    function startEmergencyBrake() {
+      if (currentMode !== "manual" || isPressed) return;
+      isPressed = true;
+      move("brake_hard");
+    }
+
+    function stopAll() {
+      if (!isPressed) return;
+      isPressed = false;
+      move("stop");
+    }
+
+    function goArm() {
+      alert("Arm control handled separately");
+    }
+  </script>
+
+</body>
+</html>
